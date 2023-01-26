@@ -1,4 +1,4 @@
-function make_rgbs(red_folder, green_folder, blue_folder, destination_folder, im_in_ext, im_out_ext, scaling, name_map)
+function make_rgbs(red_folder, green_folder, blue_folder, destination_folder, im_in_ext, im_out_ext, scaling, varargin)
 %Applies gray or lcc/white card image adjustments to a set of sample images
 %taken at the same wavelength
 %
@@ -16,6 +16,9 @@ function make_rgbs(red_folder, green_folder, blue_folder, destination_folder, im
 % input images and the associated names you would like for the rgb images
 % in the 2nd column. Function will otherwise base naming off of the input
 % red image.
+% mask_path: (optional) character vector with the full path to the folder
+% which contains masks to be applied to the images. Likely to get rid of
+% background and specular patches
 %
 % OUTPUT
 % there are no outputs, but the rgb images will be in the indicated
@@ -30,6 +33,31 @@ function make_rgbs(red_folder, green_folder, blue_folder, destination_folder, im
         im_in_ext = ['*' im_in_ext];
     end
 
+    % start with false logicals for optional inputs
+    name_mapped = false;
+    masking = false;
+    
+    % gotta parse optional arguments
+    if numel(varargin) > 0 
+        % first see what the types of the variables are
+        var_classes = cell(size(varargin));
+        for i = 1:numel(varargin)
+            var_classes{i} = class(varargin{i});
+        end
+        % a name_map would be if any of these classes were a cell
+        if any(strcmp(var_classes, 'cell'))
+            map_ind = strcmp(var_classes, 'cell');
+            name_map = varargin{map_ind};
+            name_mapped = true;
+        end
+        % a mask path woud be a character vector
+        if any(strcmp(var_classes, 'char'))
+            mask_ind = strcmp(var_classes, 'char');
+            mask_path = varargin{mask_ind};
+            masking = true;
+        end
+    end
+
     % make directories
     red_dir = dir(fullfile(red_folder, im_in_ext));
     red_dir(strncmp({red_dir.name}, '.', 1)) = []; %remove files in dir starting with '.'
@@ -37,6 +65,12 @@ function make_rgbs(red_folder, green_folder, blue_folder, destination_folder, im
     green_dir(strncmp({green_dir.name}, '.', 1)) = []; %remove files in dir starting with '.'
     blue_dir = dir(fullfile(blue_folder, im_in_ext));
     blue_dir(strncmp({blue_dir.name}, '.', 1)) = []; %remove files in dir starting with '.'
+
+    % optional directory for masks if exists
+    if masking 
+        mask_dir = dir(fullfile(mask_path, im_in_ext));
+        mask_dir(strncmp({mask_dir.name}, '.', 1)) = []; %remove files in dir starting with '.'
+    end
     
 
     % and then go through all of the images, read them, concatenate them
@@ -52,12 +86,18 @@ function make_rgbs(red_folder, green_folder, blue_folder, destination_folder, im
         
         this_rgb = cat(3, this_red, this_green, this_blue);
 
+        % if we're masking, gotta apply the mask
+        if masking
+            this_mask = double(imread(fullfile(mask_path,mask_dir(i).name)));
+            this_rgb = this_rgb.*this_mask;
+        end
+
         if scaling < 1
             this_rgb = imresize(this_rgb,scaling);
         end
 
 
-        if nargin == 8
+        if name_mapped
             % in this case the user provided a naming key. we'll search off
             % the red image
             [~,red_name,~] = fileparts(red_dir(i).name); 
