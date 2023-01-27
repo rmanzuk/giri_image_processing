@@ -33,7 +33,8 @@ function background_masks(in_dirs,out_dir,im_ext)
     test_im = im2double(imread(fullfile(test_dir(1).folder, test_dir(1).name)));
     im_height = size(test_im,1);
     im_width = size(test_im,2);
-
+    
+    keyboard
     % Make a waitbar to keep track of how long it's taking
     f = waitbar(0, 'Making masks');
 
@@ -48,18 +49,30 @@ function background_masks(in_dirs,out_dir,im_ext)
             this_im(:,:,j) = im2double(imread(fullfile(this_dir(i).folder, this_dir(i).name)));
         end
 
-        % and reshape the multichannel image into columns
+        % superpixels will help us make a nice, continuous mask
+        label_mat = superpixels(this_im(:,:,1:3), 10000);
+
+        % for stats of the superpixels, easiest to work in coulmns with the
+        % image and lablematrix
         im_reshaped = reshape(this_im,[],numel(in_dirs));
+        label_col = reshape(label_mat,[],1);
+        
+        % take the mean color values of all superpixels
+        mean_colors = splitapply(@mean,im_reshaped,label_col);
+
+        % expand out to the size of the whole image again
+        mean_colors_expanded = mean_colors(label_col,:);
+        mean_color_image = reshape(mean_colors_expanded,size(this_im));
 
         % we want to get the ratios of all columns, so we'll use n choose k
         % to get all pairings
         pairings = nchoosek([1:numel(in_dirs)], 2);
 
-        % loop through and grab the ratios
-        ratios = zeros(size(im_reshaped,1),size(pairings,2));
-        for j = 1:size(pairings,1)
-            ratios(:,j) = im_reshaped(:,pairings(j,1))./im_reshaped(:,pairings(j,2));
-        end
+        % grab all ratios indicated by the pairings
+        ratios = mean_colors_expanded(:,pairings(:,1))./mean_colors_expanded(:,pairings(:,2));
+
+        % define an initial mask where all of the ratios look pretty good
+        initial_mask = reshape(all(ratios > 0.5 & ratios < 1.8,2), size(this_im,1),size(this_im,2));
 
         % and decide which ratios are too big or small: 
         too_small_big = ratios < 0.5 | ratios > 2;
