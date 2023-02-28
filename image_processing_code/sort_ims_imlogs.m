@@ -25,8 +25,16 @@ function sort_ims_imlogs(im_directory, im_ext, imlog_directory, sort_directory)
     im_files = dir(fullfile(im_directory, im_ext));
     im_files(strncmp({im_files.name}, '.', 1)) = []; %remove files in dir starting with '.'
     
+    %keyboard
     % and get a set of extensionless names for later
-    [~,im_names] = fileparts({im_files.name});
+    %[~,im_names] = fileparts({im_files.name});
+    for x = 1:length({im_files.name})
+     
+        [~,im_name_temp] = fileparts(im_files(2).name);
+        im_name(x) = {im_name_temp};
+        
+    end
+    
     
     % load in all of the image logs
     imlog_dir = dir(fullfile(imlog_directory,'*.csv'));
