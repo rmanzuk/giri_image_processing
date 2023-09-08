@@ -72,7 +72,6 @@ function make_rgbs(red_folder, green_folder, blue_folder, destination_folder, im
         mask_dir(strncmp({mask_dir.name}, '.', 1)) = []; %remove files in dir starting with '.'
     end
     
-
     % and then go through all of the images, read them, concatenate them
     % and save them
 
